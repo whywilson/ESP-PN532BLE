@@ -13,12 +13,19 @@ PN532_BLE::PN532_BLE(bool debug) { _debug = debug; }
 
 PN532_BLE::~PN532_BLE()
 {
+    #ifdef NIMBLE_V2_PLUS
+    if (NimBLEDevice::isInitialized())
+    #else
     if (NimBLEDevice::getInitialized())
+    #endif
     {
         pn532bleBuffer.clear();
         NimBLEDevice::deinit(true);
     }
 }
+#ifdef NIMBLE_V2_PLUS
+#define NimBLEAdvertisedDeviceCallbacks NimBLEScanCallbacks
+#endif
 
 class scanCallbacks : public NimBLEAdvertisedDeviceCallbacks
 {
@@ -116,6 +123,25 @@ bool PN532_BLE::searchForDevice()
         Serial.println("Searching for PN532 BLE device...");
     NimBLEDevice::init("");
     NimBLEScan *pScan = NimBLEDevice::getScan();
+    #ifdef NIMBLE_V2_PLUS
+    pScan->setScanCallbacks(new scanCallbacks());
+    pScan->setActiveScan(true);
+    if (_debug)
+        Serial.println("Start scanning...");
+    BLEScanResults foundDevices = pScan->getResults(5);
+    if (_debug)
+        Serial.printf("Scan done! Found %d devices.\n", foundDevices.getCount());
+    for (int i = 0; i < foundDevices.getCount(); i++)
+    {
+        const NimBLEAdvertisedDevice* advertisedDevice = foundDevices.getDevice(i);
+        if (advertisedDevice->getName().find("PN532") != std::string::npos &&
+            advertisedDevice->getName().find("BLE") != std::string::npos)
+        {
+            _device = (NimBLEAdvertisedDevice*)advertisedDevice;
+            return true;
+        }
+    }
+    #else
     pScan->setAdvertisedDeviceCallbacks(new scanCallbacks());
     pScan->setActiveScan(true);
     if (_debug)
@@ -133,13 +159,16 @@ bool PN532_BLE::searchForDevice()
             return true;
         }
     }
+    #endif
     return false;
 }
 
 bool PN532_BLE::isConnected() { return chrWrite != nullptr && chrNotify != nullptr; }
-
+#ifdef NIMBLE_V2_PLUS
+bool PN532_BLE::isPN532Killer() { return _device->getName().find("PN532Killer") != std::string::npos; }
+#else
 bool PN532_BLE::isPN532Killer() { return _device.getName().find("PN532Killer") != std::string::npos; }
-
+#endif
 NimBLERemoteService *PN532_BLE::getService(NimBLEClient *pClient)
 {
     for (const auto &uuid : serviceUUIDs)
@@ -182,9 +211,13 @@ bool PN532_BLE::connectToDevice()
 
     auto characteristics = pSvc->getCharacteristics(true);
     Serial.println("Characteristics Size:");
+    #ifdef NIMBLE_V2_PLUS
+    Serial.println(characteristics.size());
+    for (auto &characteristic : characteristics)
+    #else
     Serial.println(characteristics->size());
-
     for (auto &characteristic : *characteristics)
+    #endif
     {
         if (characteristic->canWrite())
         {
@@ -192,7 +225,11 @@ bool PN532_BLE::connectToDevice()
             break;
         }
     }
+    #ifdef NIMBLE_V2_PLUS
+    for (auto &characteristic : characteristics)
+    #else
     for (auto &characteristic : *characteristics)
+    #endif
     {
         if (characteristic->canNotify())
         {
@@ -351,9 +388,11 @@ void PN532_BLE::writeData(const std::vector<uint8_t> &data)
         chrWrite->writeValue(data.data(), data.size());
     }
 }
-
+#ifdef NIMBLE_V2_PLUS
+void PN532_BLE::setDevice(NimBLEAdvertisedDevice device) { _device = &device; }
+#else
 void PN532_BLE::setDevice(NimBLEAdvertisedDevice device) { _device = device; }
-
+#endif
 String PN532_BLE::getTagType()
 {
     switch (hf14aTagInfo.sak)

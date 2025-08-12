@@ -10,6 +10,11 @@
  #define PN532_BLE_H
  
  #include <NimBLEDevice.h>
+ #if __has_include(<NimBLEExtAdvertising.h>)
+ #define NIMBLE_V2_PLUS 1
+ #include <NimBLEAdvertising.h>
+ #include <NimBLEServer.h>
+ #endif
  #include <array>
  #include <vector>
  
@@ -79,8 +84,13 @@
      void setDevice(NimBLEAdvertisedDevice device);
      bool isConnected();
      bool isPN532Killer();
+     #ifdef NIMBLE_V2_PLUS
+     NimBLEAdvertisedDevice *_device;
+     std::string getName() { return _device->getName(); }
+     #else
      NimBLEAdvertisedDevice _device;
      std::string getName() { return _device.getName(); }
+     #endif
  
      void wakeup();
      bool halt();

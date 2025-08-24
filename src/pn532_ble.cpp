@@ -132,7 +132,7 @@ bool PN532_BLE::searchForDevice()
     pScan->setActiveScan(true);
     if (_debug)
         Serial.println("Start scanning...");
-    BLEScanResults foundDevices = pScan->getResults(5);
+    BLEScanResults foundDevices = pScan->getResults(150);
     if (_debug)
         Serial.printf("Scan done! Found %d devices.\n", foundDevices.getCount());
     for (int i = 0; i < foundDevices.getCount(); i++)
@@ -199,7 +199,7 @@ bool PN532_BLE::connectToDevice()
         return false;
     }
 #ifdef NIMBLE_V2_PLUS
-    if (!pClient->connect(_device))
+    if (!pClient->connect(_device,false,false,false))
 #else
     if (!pClient->connect(&_device, false))
 #endif

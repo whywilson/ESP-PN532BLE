@@ -14,6 +14,10 @@ PN532_BLE::PN532_BLE(bool debug) { _debug = debug; }
 PN532_BLE::~PN532_BLE()
 {
     #ifdef NIMBLE_V2_PLUS
+    if(_device) {
+        delete _device;
+        _device = nullptr;
+    }
     if (NimBLEDevice::isInitialized())
     #else
     if (NimBLEDevice::getInitialized())
@@ -137,7 +141,11 @@ bool PN532_BLE::searchForDevice()
         if (advertisedDevice->getName().find("PN532") != std::string::npos &&
             advertisedDevice->getName().find("BLE") != std::string::npos)
         {
-            _device = (NimBLEAdvertisedDevice*)advertisedDevice;
+            if(_device) {
+                delete _device;
+                _device = nullptr;
+            }
+            if (NimBLEDevice::isInitialized())
             return true;
         }
     }
@@ -190,8 +198,11 @@ bool PN532_BLE::connectToDevice()
         Serial.println("Failed to create client");
         return false;
     }
-
+#ifdef NIMBLE_V2_PLUS
+    if (!pClient->connect(_device))
+#else
     if (!pClient->connect(&_device, false))
+#endif
     {
         Serial.println("Failed to connect to device");
         return false;

@@ -85,7 +85,7 @@
      bool isConnected();
      bool isPN532Killer();
      #ifdef NIMBLE_V2_PLUS
-     NimBLEAdvertisedDevice *_device;
+     NimBLEAdvertisedDevice *_device = nullptr;
      std::string getName() { return _device->getName(); }
      #else
      NimBLEAdvertisedDevice _device;

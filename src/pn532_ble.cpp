@@ -16,7 +16,11 @@ PN532_BLE::~PN532_BLE()
     if (NimBLEDevice::isInitialized())
     {
         pn532bleBuffer.clear();
-        NimBLEDevice::deinit(true);
+    #if defined(CONFIG_IDF_TARGET_ESP32C5)
+        esp_bt_controller_deinit();
+    #else
+        BLEDevice::deinit();
+    #endif
     }
 }
 
